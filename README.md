@@ -37,7 +37,11 @@ Mix multiple stereo inputs to one output.
        cd pie_mixer
        bash -c 'cargo build --release'
 
-6. Configure PipeWire
+6. Grant user permissions to access multimedia devices
+
+       sudo usermod -aG audio,video,pulse-access,rtkit $USER
+
+7. Configure PipeWire
 
    Set allowed output sample rates (increasing this will require substantially more CPU resources):
 
@@ -55,7 +59,7 @@ Mix multiple stereo inputs to one output.
 
        pw-metadata -n settings 0 clock.force-quantum 768
 
-7. Run:
+8. Run:
 
        ./target/release/pie_mixer
 
