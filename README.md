@@ -1,13 +1,16 @@
 # pie_mixer
 
-Mix multiple stereo inputs to one output.
+Simple digital mixer for Raspberry Pi.
 
 ## Notes
 
-* Basic digital mixer for Raspberry Pi with no options
-* Currently designed for S/PDIF digital audio ports but can be made to work with any PipeWire source/sink
+* Mixes multiple stereo inputs to one output
+* Currently designed for S/PDIF digital audio ports
+  * Can be made to work with other PipeWire sources/sinks (search `SPDIF` in [`src/main.rs`](src/main.rs))
 
 ## Hardware
+
+This is the setup used for testing; other platforms may also work.
 
 * Dedicated Raspberry Pi 4
 * 1x [UGREEN USB Hub 3.0, 4 Ports USB A](https://amazon.ca/dp/B0CD1BHXPZ)
@@ -16,7 +19,9 @@ Mix multiple stereo inputs to one output.
 
 ## Software
 
-1. Install Ubuntu 24.04 and set up system fresh
+This is the test configuration; other setups may also work.
+
+1. Install [Ubuntu 24.04 Desktop](https://ubuntu.com/download/raspberry-pi) and set up Raspberry Pi system fresh
 
 2. Install build and runtime dependencies:
 
@@ -75,9 +80,9 @@ Mix multiple stereo inputs to one output.
        2026-01-27T08:36:37.467193Z  INFO pie_mixer: Keep program active to maintain connections, or press Ctrl+C to stop the mixer...
        ^C
 
-9. Run with automatic restart on failure (currently the program does not create a persistent mixer)
+   Alternatively, use `bash` to run with automatic restart on changes to PipeWire graph (currently the program does not create a persistent mixer)
 
-       function retry { ./target/release/pie_mixer || (retry) }; retry
+       bash -c 'function retry { ./target/release/pie_mixer || (retry) }; retry'
 
 ### Debugging
 
