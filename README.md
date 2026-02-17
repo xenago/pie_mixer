@@ -37,7 +37,7 @@ This is the test configuration; other setups may also work.
        cd ~
        git clone https://github.com/xenago/pie_mixer.git
 
-5. Build:
+5. Build (a fresh build takes ~180 seconds on a Raspberry Pi 4; rebuilding takes ~45 seconds):
 
        cd pie_mixer
        bash -c 'cargo build --release'
@@ -60,9 +60,9 @@ This is the test configuration; other setups may also work.
 
        pw-metadata -n settings 0 clock.force-rate 96000
 
-   Optionally, reduce buffer (can be unstable below 1024):
+   Optionally, reduce buffer for lower latency (can be unstable below default of 1024, but 512 does seem to work in my testing):
 
-       pw-metadata -n settings 0 clock.force-quantum 768
+       pw-metadata -n settings 0 clock.force-quantum 512
 
 8. Run:
 
@@ -79,10 +79,6 @@ This is the test configuration; other setups may also work.
        2026-01-27T08:36:37.467159Z  INFO pie_mixer: Mixer links established!
        2026-01-27T08:36:37.467193Z  INFO pie_mixer: Keep program active to maintain connections, or press Ctrl+C to stop the mixer...
        ^C
-
-   Alternatively, use `bash` to run with automatic restart on changes to PipeWire graph (currently the program does not create a persistent mixer)
-
-       bash -c 'function retry { ./target/release/pie_mixer || (retry) }; retry'
 
 ### Debugging
 

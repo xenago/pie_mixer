@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Mutex;
 use std::rc::Rc;
 
 use anyhow::{anyhow, Result};
@@ -51,7 +52,7 @@ fn main() -> Result<()> {
         .map_err(|error| anyhow!("Failed to retrieve PipeWire registry: {:?}", error))?;
 
     // Shared storage between the main thread and local callbacks
-    let discovered_nodes = Rc::new(RefCell::new(HashMap::<u32, NodeInfo>::new()));
+    let discovered_nodes = Rc::new(Mutex::new(HashMap::<u32, NodeInfo>::new()));
     let discovered_nodes_collection = discovered_nodes.clone();
     let discovered_nodes_removal = discovered_nodes.clone();
 
@@ -60,7 +61,6 @@ fn main() -> Result<()> {
     let _registry_listener = pipewire_registry
         .add_listener_local()
         .global(move |global_object| {
-            // Node discovery
             if global_object.type_ == pipewire::types::ObjectType::Node {
                 if let Some(props) = global_object.props {
                     let description = props
@@ -68,22 +68,19 @@ fn main() -> Result<()> {
                         .or_else(|| props.get(*pipewire::keys::NODE_NAME))
                         .unwrap_or("Unknown");
                     let media_class = props.get(*pipewire::keys::MEDIA_CLASS).unwrap_or("Unknown");
-                    let input = media_class.to_string().contains("Source")
-                        || media_class.to_string().contains("Input");
+                    let input = media_class.contains("Source") || media_class.contains("Input");
                     // Save the discovered node
-                    discovered_nodes_collection
-                        .borrow_mut()
-                        .entry(global_object.id)
-                        .or_insert(NodeInfo {
+                    if let Ok(mut nodes) = discovered_nodes_collection.lock() {
+                        nodes.entry(global_object.id).or_insert(NodeInfo {
                             global_id: global_object.id,
                             description: description.to_string(),
                             media_class: media_class.to_string(),
                             input,
                             ports: Vec::new(),
                         });
+                    }
                 }
             }
-            // Port discovery (required for Stereo pairing)
             if global_object.type_ == pipewire::types::ObjectType::Port {
                 if let Some(props) = global_object.props {
                     if let Some(node_id) = props
@@ -100,10 +97,10 @@ fn main() -> Result<()> {
                             .unwrap_or("unknown")
                             .to_string();
                         // Save the discovered port
-                        if let Some(node) =
-                            discovered_nodes_collection.borrow_mut().get_mut(&node_id)
-                        {
-                            node.ports.push((global_object.id, channel, dir));
+                        if let Ok(mut nodes) = discovered_nodes_collection.lock() {
+                            if let Some(node) = nodes.get_mut(&node_id) {
+                                node.ports.push((global_object.id, channel, dir));
+                            }
                         }
                     }
                 }
@@ -111,7 +108,9 @@ fn main() -> Result<()> {
         })
         .global_remove(move |id| {
             // Evict node from cache if destroyed in the PipeWire graph
-            discovered_nodes_removal.borrow_mut().remove(&id);
+            if let Ok(mut nodes) = discovered_nodes_removal.lock() {
+                nodes.remove(&id);
+            }
         })
         .register();
 
@@ -144,8 +143,8 @@ fn main() -> Result<()> {
     // Output the results in a readable format
 
     // 1. Collect values for sorting
-    let nodes_borrow = discovered_nodes.borrow();
-    let mut sorted_nodes: Vec<&NodeInfo> = nodes_borrow.values().collect();
+    let nodes_lock = discovered_nodes.lock().unwrap();
+    let mut sorted_nodes: Vec<&NodeInfo> = nodes_lock.values().collect();
 
     // 2. Sort by global_id in ascending order
     sorted_nodes.sort_by_key(|n| n.global_id);
